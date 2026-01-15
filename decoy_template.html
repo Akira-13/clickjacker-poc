@@ -1,0 +1,21 @@
+<head>
+    <style>
+        #target_website {
+            position: relative;
+            width: 800px;
+            height: 500px;
+            opacity: 0.5;
+            z-index: 2;
+        }
+        #decoy_website {
+            position: absolute;
+            top: 300px;
+            left: 300px;
+            z-index: 1;
+        }
+    </style>
+</head>
+<body>
+    <div id="decoy_website">Decoy content</div>
+    <iframe id="target_website" src="https://vulnerable-website.com"> </iframe>
+</body>
