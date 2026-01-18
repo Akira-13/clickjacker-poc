@@ -1,3 +1,4 @@
+import argparse
 import requests
 
 def check_clickjacking(url):
@@ -27,10 +28,6 @@ def check_clickjacking(url):
         # Site is not vulnerable if it has XFO or CSP frame-ancestors protection
         vulnerable = not (has_xfo or has_csp_frame_ancestors)
 
-        # Check if vulnerable site has protected cookies
-        if vulnerable and cookies_with_samesite:
-            print(f"Site appears to be frameable but has protected cookies: {', '.join(cookies_with_samesite)}")
-
         return {
             "url": url,
             "vulnerable": vulnerable,
@@ -44,7 +41,33 @@ def check_clickjacking(url):
     except requests.exceptions.RequestException as e:
         return {"error": str(e)}
 
-target = "https://example.com"
-report = check_clickjacking(target)
-print(f"Target: {report['url']}\nVulnerable: {report['vulnerable']}")
-print(report)
+def main():
+    parser = argparse.ArgumentParser(description="Clickjacking scanner and PoC generator.",
+                                     epilog="Educational purposes only. Use responsibly.")
+    parser.add_argument("url", help="The target URL to scan.")
+    args = parser.parse_args()
+
+    print(f"[*] Scanning {args.url}...")
+    report = check_clickjacking(args.url)
+    if "error" in report:
+        print(f"[!] Error: {report['error']}")
+    elif report["vulnerable"]:
+        print(f"[!] Target allows framing!")
+
+        insecure = report["details"]["insecure_cookies"]
+        if len(insecure) != 0:
+            print(f"[*] Site appears frameable but has protected cookies: {', '.join(insecure)}")
+        
+        ans = input("[*] Generate PoC? (y/n): ")
+        if ans.lower() in ['y', 'yes', '']:
+            print("[*] Generating PoC...")
+            # Generate PoC Here
+        elif ans.lower() not in ['n', 'no']:
+            print("[!] Invalid input, skipping PoC generation.")
+            return
+
+    elif not report["vulnerable"]:
+        print("[!] Target is not vulnerable.")
+
+if __name__ == "__main__":
+    main()
