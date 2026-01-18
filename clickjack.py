@@ -1,6 +1,8 @@
 import argparse
 import requests
 
+poc_template = "poc_maker_template.html"
+
 def check_clickjacking(url):
     try:
         response = requests.get(url, timeout=5, allow_redirects=True)
@@ -41,6 +43,26 @@ def check_clickjacking(url):
     except requests.exceptions.RequestException as e:
         return {"error": str(e)}
 
+def generate_poc_maker(url):
+    """Generates an HTML file to help calibrate the attack."""
+    # We load the template from a separate file or string
+    try:
+        with open(poc_template, "r") as f:
+            template = f.read()
+    except FileNotFoundError:
+        print("Error: poc_maker_template.html not found.")
+        return
+
+    # Inject the target URL into the template
+    # This replaces a placeholder {{TARGET_URL}} in the HTML
+    poc_content = template.replace("{{TARGET_URL}}", url)
+    
+    filename = "clickjack_poc.html"
+    with open(filename, "w") as f:
+        f.write(poc_content)
+    print(f"[+] PoC Maker generated: {filename}")
+    print("[+] Open this file in your browser to calibrate the attack.")
+
 def main():
     parser = argparse.ArgumentParser(description="Clickjacking scanner and PoC generator.",
                                      epilog="Educational purposes only. Use responsibly.")
@@ -61,7 +83,7 @@ def main():
         ans = input("[*] Generate PoC? (y/n): ")
         if ans.lower() in ['y', 'yes', '']:
             print("[*] Generating PoC...")
-            # Generate PoC Here
+            generate_poc_maker(args.url)
         elif ans.lower() not in ['n', 'no']:
             print("[!] Invalid input, skipping PoC generation.")
             return

