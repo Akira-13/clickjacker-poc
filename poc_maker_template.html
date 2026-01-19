@@ -17,7 +17,10 @@
             align-items: center;
             padding: 0 12px;
             box-shadow: 0 0 4px 1px rgba(0,0,0,0.08);
-            position: absolute; 
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
             z-index: 50;
             user-select: none;
             cursor: pointer;
@@ -66,6 +69,30 @@
             color: #555;
             margin-top: 0px;
             text-align: center;
+        }
+
+        /* --- REDIRECT MESSAGE STYLES --- */
+        .redirect-message {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            font-family: Arial, sans-serif;
+            z-index: 50;
+        }
+
+        .redirect-message p {
+            margin: 0;
+            padding: 5px 0;
+            font-size: 16px;
+            color: #333;
+        }
+
+        .redirect-message a {
+            color: #007bff;
+            text-decoration: underline;
+            cursor: pointer;
         }
 
         /* --- CONTROLS & LAYOUT --- */
@@ -126,6 +153,7 @@
         <select id="decoyType" style="width: 100%; margin-bottom: 10px;">
             <option value="button">Generic Blue Button</option>
             <option value="recaptcha">Fake reCAPTCHA</option>
+            <option value="redirect">Redirect Message</option>
         </select>
         
         <label class="label">Decoy Text:</label>
@@ -140,16 +168,21 @@
         
         <button id="decoy_button">WIN A PRIZE!</button>
 
-        <div id="decoy_recaptcha" class="recaptcha-box" style="display: none;">
-            <div class="recaptcha-checkbox"></div>
-            <div class="recaptcha-text">I'm not a robot</div>
-            <div class="recaptcha-logo">
-                <div class="recaptcha-logo-img"></div>
-                <div class="recaptcha-logo-text">reCAPTCHA</div>
-                <div class="recaptcha-privacy">Privacy - Terms</div>
-            </div>
-        </div>
+    </div>
 
+    <div id="decoy_recaptcha" class="recaptcha-box" style="display: none;">
+        <div class="recaptcha-checkbox"></div>
+        <div class="recaptcha-text">I'm not a robot</div>
+        <div class="recaptcha-logo">
+            <div class="recaptcha-logo-img"></div>
+            <div class="recaptcha-logo-text">reCAPTCHA</div>
+            <div class="recaptcha-privacy">Privacy - Terms</div>
+        </div>
+    </div>
+
+    <div id="decoy_redirect" class="redirect-message" style="display: none;">
+        <p>You're being redirected.</p>
+        <p>If the page doesn't load automatically, click <a href="#">here</a>.</p>
     </div>
 
     <div id="iframe_container">
@@ -166,6 +199,7 @@
         const frame = document.getElementById('target_frame');
         const decoyBtn = document.getElementById('decoy_button');
         const decoyRecaptcha = document.getElementById('decoy_recaptcha');
+        const decoyRedirect = document.getElementById('decoy_redirect');
         const decoyType = document.getElementById('decoyType');
         const decoyText = document.getElementById('decoyText');
         
@@ -179,10 +213,17 @@
             if(e.target.value === 'recaptcha'){
                 decoyBtn.style.display = 'none';
                 decoyRecaptcha.style.display = 'flex';
+                decoyRedirect.style.display = 'none';
+                decoyText.disabled = true;
+            } else if(e.target.value === 'redirect'){
+                decoyBtn.style.display = 'none';
+                decoyRecaptcha.style.display = 'none';
+                decoyRedirect.style.display = 'block';
                 decoyText.disabled = true;
             } else {
                 decoyBtn.style.display = 'block';
                 decoyRecaptcha.style.display = 'none';
+                decoyRedirect.style.display = 'none';
                 decoyText.disabled = false;
             }
         });
@@ -267,7 +308,7 @@
             
             if(decoyType.value === 'recaptcha') {
                 style = `
-                .recaptcha-box { background: #f9f9f9; border: 1px solid #d3d3d3; border-radius: 3px; width: 300px; height: 74px; display: flex; align-items: center; padding: 0 12px; box-shadow: 0 0 4px 1px rgba(0,0,0,0.08); font-family: 'Roboto', sans-serif; cursor: pointer; user-select: none; position: absolute; top: 300px; left: 400px; z-index: 1; }
+                .recaptcha-box { background: #f9f9f9; border: 1px solid #d3d3d3; border-radius: 3px; width: 300px; height: 74px; display: flex; align-items: center; padding: 0 12px; box-shadow: 0 0 4px 1px rgba(0,0,0,0.08); font-family: 'Roboto', sans-serif; cursor: pointer; user-select: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1; }
                 .recaptcha-checkbox { width: 24px; height: 24px; border: 2px solid #c1c1c1; border-radius: 2px; background-color: #fff; margin-right: 12px; }
                 .recaptcha-text { font-size: 14px; color: #000; font-weight: 500; flex-grow: 1; }
                 .recaptcha-logo-img { width: 32px; height: 32px; background-image: url("https://www.gstatic.com/recaptcha/api2/logo_48.png"); background-size: 32px; background-repeat: no-repeat; margin: 0 auto; }
@@ -283,6 +324,17 @@
                         <div class="recaptcha-logo-text">reCAPTCHA</div>
                         <div class="recaptcha-privacy">Privacy - Terms</div>
                     </div>
+                </div>`;
+            } else if(decoyType.value === 'redirect') {
+                style = `
+                .redirect-message { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; font-family: Arial, sans-serif; z-index: 1; }
+                .redirect-message p { margin: 0; padding: 5px 0; font-size: 16px; color: #333; }
+                .redirect-message a { color: #007bff; text-decoration: underline; cursor: pointer; }`;
+                
+                html = `
+                <div class="redirect-message">
+                    <p>You're being redirected.</p>
+                    <p>If the page doesn't load automatically, click <a href="#">here</a>.</p>
                 </div>`;
             } else {
                 style = `#decoy { position: absolute; top: 300px; left: 400px; z-index: 1; background: #007bff; color: white; padding: 15px 30px; border: none; font-size: 16px; font-weight: bold; }`;
