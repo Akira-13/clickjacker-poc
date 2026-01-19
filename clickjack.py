@@ -77,8 +77,8 @@ def main():
         print(f"[!] Target allows framing!")
 
         insecure = report["details"]["insecure_cookies"]
-        if len(insecure) != 0:
-            print(f"[*] Site appears frameable but has protected cookies: {', '.join(insecure)}")
+        if len(insecure) == 0:
+            print(f"[*] Site has no cookies or appears frameable but has protected cookies: {', '.join(insecure)}")
         
         ans = input("[*] Generate PoC? (y/n): ")
         if ans.lower() in ['y', 'yes', '']:
