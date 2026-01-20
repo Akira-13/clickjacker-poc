@@ -190,7 +190,7 @@
         <p style="font-size:12px">3. If attack is multi-click, record step and reposition iframe for next click (requires guessing from second click onwards, unfortunately.)</p>
         <p style="font-size:12px">3. If only single-click, just export the HTML when ready.</p>
         
-        <label class="label">Target Opacity (exports to 0.0001):</label>
+        <label class="label">Target Opacity:</label>
         <input type="range" min="0" max="1" step="0.1" value="0.5" id="opacitySlider">
         
         <label class="label">Decoy Type:</label>
@@ -208,6 +208,13 @@
 
             <input type="checkbox" id="sandboxToggle" style="margin-right: 5px;">
             Enable iframe Sandbox (bypasses frame busters)
+            </p>
+        </label>
+        
+        <label class="label" style="margin-top: 8px;">
+            <p>
+            <input type="checkbox" id="exportOpacityToggle" style="margin-right: 5px;">
+            Export iframe at 0.5 opacity (default 0.001)
             </p>
         </label>
         
@@ -264,6 +271,7 @@
         const decoyType = document.getElementById('decoyType');
         const decoyText = document.getElementById('decoyText');
         const sandboxToggle = document.getElementById('sandboxToggle');
+        const exportOpacityToggle = document.getElementById('exportOpacityToggle');
         let steps = [];
         let currentStepIndex = 0;
         
@@ -439,6 +447,8 @@
             const left = container.style.left || '0';
             const width = container.style.width || '80%';
             const height = container.style.height || '80%';
+            // Compute export opacity (0.001 by default, 0.5 if toggled)
+            const exportOpacity = (exportOpacityToggle && exportOpacityToggle.checked) ? '0.5' : '0.001';
             
             if(decoyType.value === 'recaptcha') {
                 style = `
@@ -497,7 +507,7 @@
                     position: absolute; 
                     top: ${steps[0].top}; left: ${steps[0].left}; 
                     width: ${steps[0].width}; height: ${steps[0].height}; 
-                    opacity: 0.0001; z-index: 2; border: none; 
+                    opacity: ${exportOpacity}; z-index: 2; border: none; 
                 }
                 ${style}
             </style>
