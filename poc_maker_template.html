@@ -111,6 +111,16 @@
             z-index: 50;
         }
 
+        .redirect-spinner {
+            width: 28px;
+            height: 28px;
+            border: 3px solid rgba(0,0,0,0.1);
+            border-top-color: #007bff;
+            border-radius: 50%;
+            margin: 0 auto 10px auto;
+            animation: spin 1s linear infinite;
+        }
+
         .redirect-message p {
             margin: 0;
             padding: 5px 0;
@@ -122,6 +132,10 @@
             color: #007bff;
             text-decoration: underline;
             cursor: pointer;
+        }
+
+        .redirect-message a.visited {
+            color: purple;
         }
 
         /* --- CONTROLS & LAYOUT --- */
@@ -219,6 +233,7 @@
     </div>
 
     <div id="decoy_redirect" class="redirect-message" style="display: none;">
+        <div class="redirect-spinner" aria-hidden="true"></div>
         <p>You're being redirected.</p>
         <p>If the page doesn't load automatically, click <a href="#">here</a>.</p>
     </div>
@@ -305,6 +320,14 @@
                 }, 1500);
             }, 2000);
         });
+
+        // Redirect link: mark as visited on click for realism
+        const redirectLink = decoyRedirect.querySelector('a');
+        if (redirectLink) {
+            redirectLink.addEventListener('click', () => {
+                redirectLink.classList.add('visited');
+            });
+        }
 
         // Toggle Decoy Type
         decoyType.addEventListener('change', (e) => {
@@ -435,11 +458,15 @@
             } else if(decoyType.value === 'redirect') {
                 style = `
                 .redirect-message { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; font-family: Arial, sans-serif; z-index: 1; }
+                .redirect-spinner { width: 28px; height: 28px; border: 3px solid rgba(0,0,0,0.1); border-top-color: #007bff; border-radius: 50%; margin: 0 auto 10px auto; animation: spin 1s linear infinite; }
                 .redirect-message p { margin: 0; padding: 5px 0; font-size: 16px; color: #333; }
-                .redirect-message a { color: #007bff; text-decoration: underline; cursor: pointer; }`;
+                .redirect-message a { color: #007bff; text-decoration: underline; cursor: pointer; }
+                .redirect-message a.visited { color: purple; }
+                @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`;
                 
                 html = `
                 <div class="redirect-message">
+                    <div class="redirect-spinner" aria-hidden="true"></div>
                     <p>You're being redirected.</p>
                     <p>If the page doesn't load automatically, click <a href="#">here</a>.</p>
                 </div>`;
@@ -513,10 +540,18 @@
                         }, 2000);
                     }` : ''}
 
+                    // Redirect link logic (only for redirect decoy)
+                    ${decoyType.value === 'redirect' ? `
+                    const redirectLink = document.querySelector('.redirect-message a');
+                    function markLinkVisited() {
+                        if (redirectLink) redirectLink.classList.add('visited');
+                    }` : ''}
+
                     // We listen for the window losing focus (which happens when they click the iframe)
                     window.addEventListener('blur', function() {
-                        // Trigger reCAPTCHA animation on click
+                        // Trigger decoy animations on click
                         ${decoyType.value === 'recaptcha' ? 'animateRecaptcha();' : ''}
+                        ${decoyType.value === 'redirect' ? 'markLinkVisited();' : ''}
                         
                         // Wait a split second to allow the click to register in the iframe
                         setTimeout(() => {
