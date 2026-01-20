@@ -203,21 +203,6 @@
         <label class="label">Decoy Text:</label>
         <input type="text" value="WIN A PRIZE!" id="decoyText" style="width: 100%">
         
-        <label class="label" style="margin-top: 15px;">
-            <p>
-
-            <input type="checkbox" id="sandboxToggle" style="margin-right: 5px;">
-            Enable iframe Sandbox (bypasses frame busters)
-            </p>
-        </label>
-        
-        <label class="label" style="margin-top: 8px;">
-            <p>
-            <input type="checkbox" id="exportOpacityToggle" style="margin-right: 5px;">
-            Export iframe at 0.5 opacity (default 0.001)
-            </p>
-        </label>
-        
         <hr>
         <label class="label">Multi-Click Sequencer:</label>
         <div style="display: flex; gap: 5px; margin-bottom: 10px;">
@@ -229,6 +214,17 @@
 
         <button onclick="exportPoC()" style="width:100%; padding: 8px; cursor:pointer;">Export Final HTML</button>
         <p id="coords" style="font-size: 10px; font-family: monospace; margin-top: 10px;"></p>
+
+        <label class="label" style="margin-top: 15px;">
+            <input type="checkbox" id="sandboxToggle" style="margin-right: 5px;">
+            Enable iframe Sandbox (bypasses frame busters)
+        </label>
+        
+        <label class="label" style="margin-top: 8px;">
+            <input type="checkbox" id="exportOpacityToggle" style="margin-right: 5px;">
+            Export iframe at 0.5 opacity (default 0.001)
+        </label>
+        
     </div>
 
     <div id="decoy_container">
