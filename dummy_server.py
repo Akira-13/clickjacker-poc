@@ -19,13 +19,15 @@ HTML_TEMPLATE = """
         
         #deleteBtn { 
             position: absolute;
-            top: 45%;
-            left: 45%;
+            top: 30%;
+            left: 50%;
+            transform: translate(-50%, -50%);
         }
         #confirmBtn { 
             position: absolute;
-            bottom: 70%;
-            right: 30%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
             display: none;
         }
     </style>
