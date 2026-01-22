@@ -58,4 +58,4 @@ Allows you to record multiple iframe positions for multi-click clickjacking atta
 
 ---
 
-Educational purposes only. Use responsibly!
+🐬 Educational purposes only. Use responsibly!
