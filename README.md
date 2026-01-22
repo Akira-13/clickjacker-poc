@@ -1,6 +1,6 @@
 # Clickjack Vulnerability Analyzer and PoC Creator
 
-This tool analyzes the headers in a URL to verify if a site is vulnerable to clickjacking and prepares a PoC creator.
+Security research tool designed to demonstrate the risk of UI Redressing and Clickjacking. Features automated header analysis, a visual iframe-calibration tool and social engineering templates (reCAPTCHA, Redirect message).
 
 ## Quickstart
 
